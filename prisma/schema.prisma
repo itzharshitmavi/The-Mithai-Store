@@ -1,0 +1,261 @@
+generator client {
+  provider = "prisma-client-js"
+}
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  CUSTOMER
+  ADMIN
+  STAFF
+}
+enum FulfilmentType {
+  DELIVERY
+  PICKUP
+}
+enum OrderStatus {
+  PLACED
+  CONFIRMED
+  PREPARING
+  READY_FOR_PICKUP
+  OUT_FOR_DELIVERY
+  DELIVERED
+  CANCELLED
+  REJECTED
+}
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+  REFUND_PENDING
+}
+enum PaymentMethod {
+  COD
+  ONLINE
+}
+enum MovementType {
+  ALLOCATE
+  ADD_PREPARED
+  ADJUST
+  ONLINE_SALE
+  RELEASE
+  POS_SYNC
+}
+enum NotifStatus {
+  QUEUED
+  SENT
+  FAILED
+}
+enum StockMode {
+  NORMAL
+  LIMITED
+  SOLD_OUT
+}
+
+model User {
+  id String @id @default(cuid())
+  email String @unique
+  name String
+  phone String?
+  passwordHash String
+  role Role @default(CUSTOMER)
+  createdAt DateTime @default(now())
+  addresses Address[]
+  orders Order[]
+  reviews Review[]
+}
+model Address {
+  id String @id @default(cuid())
+  userId String
+  user User @relation(fields: [userId], references: [id])
+  line1 String
+  line2 String?
+  city String
+  pincode String
+  phone String
+}
+model Category {
+  id String @id @default(cuid())
+  name String @unique
+  slug String @unique
+  isFestival Boolean @default(false)
+  sortOrder Int @default(0)
+  products Product[]
+}
+model Product {
+  id String @id @default(cuid())
+  name String
+  slug String @unique
+  description String
+  imageUrl String?
+  categoryId String
+  category Category @relation(fields: [categoryId], references: [id])
+  isGiftBox Boolean @default(false)
+  active Boolean @default(true)
+  festivalOnly Boolean @default(false)
+  prepWorkload Int @default(1)
+  variants Variant[]
+  reviews Review[]
+}
+model Variant {
+  id String @id @default(cuid())
+  productId String
+  product Product @relation(fields: [productId], references: [id])
+  label String
+  grams Int
+  pricePaise Int
+  active Boolean @default(true)
+  allocation InventoryAllocation?
+  movements InventoryMovement[]
+  orderItems OrderItem[]
+  @@unique([productId, grams])
+}
+// Online share only. Offline stock is never tracked here.
+model InventoryAllocation {
+  id String @id @default(cuid())
+  variantId String @unique
+  variant Variant @relation(fields: [variantId], references: [id])
+  onlineQty Int @default(0)
+  reserved Int @default(0)
+  mode StockMode @default(NORMAL)
+  lowThreshold Int @default(5)
+  updatedAt DateTime @updatedAt
+}
+model InventoryMovement {
+  id String @id @default(cuid())
+  variantId String
+  variant Variant @relation(fields: [variantId], references: [id])
+  type MovementType
+  delta Int
+  note String?
+  orderId String?
+  actorId String?
+  externalId String? @unique
+  bestBefore DateTime?
+  createdAt DateTime @default(now())
+}
+model CorporateEnquiry {
+  id String @id @default(cuid())
+  name String
+  company String
+  phone String
+  email String?
+  details String
+  status String @default("NEW")
+  createdAt DateTime @default(now())
+}
+model DeliverySlot {
+  id String @id @default(cuid())
+  date DateTime @db.Date
+  type FulfilmentType
+  startTime String
+  endTime String
+  maxOrders Int
+  maxWorkload Int @default(1000000)
+  bookedOrders Int @default(0)
+  bookedWorkload Int @default(0)
+  open Boolean @default(true)
+  orders Order[]
+  @@index([date, type])
+}
+model Coupon {
+  id String @id @default(cuid())
+  code String @unique
+  percentOff Int?
+  flatOffPaise Int?
+  minOrderPaise Int @default(0)
+  maxUses Int?
+  used Int @default(0)
+  expiresAt DateTime?
+  active Boolean @default(true)
+}
+model Order {
+  id String @id @default(cuid())
+  number Int @unique @default(autoincrement())
+  idempotencyKey String @unique
+  userId String?
+  user User? @relation(fields: [userId], references: [id])
+  guestEmail String?
+  contactName String
+  contactPhone String
+  fulfilment FulfilmentType
+  slotId String
+  slot DeliverySlot @relation(fields: [slotId], references: [id])
+  addressLine String?
+  pincode String?
+  status OrderStatus @default(PLACED)
+  paymentStatus PaymentStatus @default(PENDING)
+  paymentMethod PaymentMethod
+  subtotalPaise Int
+  discountPaise Int @default(0)
+  deliveryPaise Int @default(0)
+  totalPaise Int
+  couponCode String?
+  workload Int @default(0)
+  reservedUntil DateTime?
+  stockCommitted Boolean @default(false)
+  stockReleased Boolean @default(false)
+  note String?
+  createdAt DateTime @default(now())
+  items OrderItem[]
+  payments Payment[]
+  notifications Notification[]
+}
+model OrderItem {
+  id String @id @default(cuid())
+  orderId String
+  order Order @relation(fields: [orderId], references: [id])
+  variantId String
+  variant Variant @relation(fields: [variantId], references: [id])
+  productName String
+  variantLabel String
+  unitPricePaise Int
+  qty Int
+}
+model Payment {
+  id String @id @default(cuid())
+  orderId String
+  order Order @relation(fields: [orderId], references: [id])
+  provider String @default("razorpay")
+  providerOrderId String? @unique
+  providerPaymentId String? @unique
+  amountPaise Int
+  status PaymentStatus @default(PENDING)
+  createdAt DateTime @default(now())
+}
+model WebhookEvent {
+  id String @id
+  type String
+  receivedAt DateTime @default(now())
+}
+model Review {
+  id String @id @default(cuid())
+  productId String
+  product Product @relation(fields: [productId], references: [id])
+  userId String
+  user User @relation(fields: [userId], references: [id])
+  rating Int
+  body String
+  approved Boolean @default(false)
+  createdAt DateTime @default(now())
+}
+model Notification {
+  id String @id @default(cuid())
+  orderId String?
+  order Order? @relation(fields: [orderId], references: [id])
+  channel String @default("email")
+  toAddress String
+  subject String
+  body String
+  status NotifStatus @default(QUEUED)
+  error String?
+  attempts Int @default(0)
+  createdAt DateTime @default(now())
+}
+model ShopSetting {
+  key String @id
+  value Json
+}

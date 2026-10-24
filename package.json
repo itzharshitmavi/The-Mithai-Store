@@ -1,0 +1,37 @@
+{
+  "name": "mithai-shop",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "prisma generate && next build",
+    "start": "next start",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
+    "db:seed": "tsx prisma/seed.ts"
+  },
+  "dependencies": {
+    "@prisma/client": "5.22.0",
+    "bcryptjs": "2.4.3",
+    "jose": "5.9.6",
+    "next": "14.2.18",
+    "nodemailer": "6.9.16",
+    "razorpay": "2.9.5",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "zod": "3.23.8",
+    "dotenv": "16.4.7"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "2.4.6",
+    "@types/node": "20.17.6",
+    "@types/nodemailer": "6.4.17",
+    "@types/react": "18.3.12",
+    "autoprefixer": "10.4.20",
+    "postcss": "8.4.49",
+    "prisma": "5.22.0",
+    "tailwindcss": "3.4.15",
+    "tsx": "4.19.2",
+    "typescript": "5.6.3"
+  }
+}

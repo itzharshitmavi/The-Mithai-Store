@@ -1,0 +1,10 @@
+# Local PostgreSQL only: `docker compose up -d`, then use:
+# DATABASE_URL="postgresql://mithai:mithai@localhost:5432/mithai"
+services:
+  db:
+    image: postgres:16
+    environment:
+      { POSTGRES_USER: postgres, POSTGRES_PASSWORD: hmavi, POSTGRES_DB: mithai }
+    ports: ["5432:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+volumes: { pgdata: {} }
